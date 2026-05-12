@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>FitTrack</title>
+
+  <!-- PWA / iPhone -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FitTrack">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#7c3aed">
+
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async></script>
+</head>
+<body>
+  <div id="app">
+
+    <!-- ── Header ── -->
+    <header class="header">
+      <div class="header-inner">
+        <div class="brand">FitTrack</div>
+        <nav class="tab-nav">
+          <button class="tab-btn active" data-tab="workout">Workout</button>
+          <button class="tab-btn" data-tab="bodyweight">Body Weight</button>
+        </nav>
+        <div class="header-right">
+          <div class="sync-pill" id="syncPill" title="Sync status">
+            <span class="sync-dot" id="syncDot"></span>
+            <span id="syncLabel">Offline</span>
+          </div>
+          <button class="icon-btn" id="settingsBtn" title="Settings">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Workout Tab ── -->
+    <section id="workout-tab" class="tab-content active">
+      <div class="container">
+
+        <!-- VIEW 1: Workout list -->
+        <div id="view-workouts" class="wv active">
+          <div class="view-header">
+            <h1 class="view-title">Workouts</h1>
+            <button class="btn btn-primary" id="newWorkoutBtn">+ New Workout</button>
+          </div>
+          <div id="workoutGrid" class="workout-grid"></div>
+          <div class="card">
+            <div class="card-header">
+              <h2>Performance by Workout</h2>
+              <span class="card-subtitle">Last session volume vs 7-day &amp; 30-day averages</span>
+            </div>
+            <div id="perfMain"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>Session History</h2></div>
+            <div id="sessionHistory"></div>
+          </div>
+        </div>
+
+        <!-- VIEW 2: Create / Edit workout template -->
+        <div id="view-create-workout" class="wv">
+          <div class="view-header">
+            <button class="btn btn-back" id="backToListBtn">&#8592; Back</button>
+            <h2 id="createWorkoutTitle">New Workout</h2>
+          </div>
+          <div class="card">
+            <div class="form-group">
+              <label class="form-label">Workout Name</label>
+              <input type="text" id="workoutNameInput" class="form-input" placeholder="e.g. Arm Day, Push Day…">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Exercises in this workout</label>
+              <div id="workoutExerciseList" class="workout-exercise-list"></div>
+              <div class="add-exercise-row" style="margin-top: 10px">
+                <select id="addExToWorkoutSelect" class="form-input">
+                  <option value="">Add from library…</option>
+                </select>
+                <button class="btn btn-outline" id="addExToWorkoutBtn">Add</button>
+              </div>
+            </div>
+            <div class="section-divider"></div>
+            <div class="form-group">
+              <label class="form-label">New exercise — add to library &amp; workout</label>
+              <div class="add-exercise-row">
+                <input type="text" id="newExerciseName" class="form-input" placeholder="e.g. Bicep Curl">
+                <button class="btn btn-outline" id="addToLibraryBtn">Add</button>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-full" id="saveWorkoutTemplateBtn">Save Workout</button>
+          </div>
+        </div>
+
+        <!-- VIEW 3: Log session -->
+        <div id="view-log-session" class="wv">
+          <div class="view-header">
+            <button class="btn btn-back" id="backFromLogBtn">&#8592; Back</button>
+            <div>
+              <h2 id="logSessionTitle"></h2>
+              <span class="card-subtitle">Fill in your numbers for today</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="form-group" style="max-width: 200px">
+              <label class="form-label">Session Date</label>
+              <input type="date" id="sessionDate" class="form-input">
+            </div>
+            <div id="sessionExerciseInputs"></div>
+            <button class="btn btn-primary btn-full" id="saveSessionBtn">Save Session</button>
+            <div id="sessionSaveStatus" class="sync-status hidden"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h2>Previous Performance</h2>
+              <span class="card-subtitle">Use this as your target reference</span>
+            </div>
+            <div id="perfLog"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Body Weight Tab ── -->
+    <section id="bodyweight-tab" class="tab-content">
+      <div class="container">
+        <div class="two-col">
+
+          <!-- Entry Form -->
+          <div class="card">
+            <div class="card-header"><h2>Log Body Stats</h2></div>
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" id="bwDate" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Weight (kg)</label>
+              <input type="number" id="bwWeight" class="form-input" min="0" step="0.1" placeholder="85.0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Waist (in)</label>
+              <input type="number" id="bwWaist" class="form-input" min="0" step="0.5" placeholder="32.0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Notes</label>
+              <textarea id="bwNotes" class="form-input form-textarea" rows="3" placeholder="How are you feeling today…"></textarea>
+            </div>
+            <button class="btn btn-primary btn-full" id="saveBwBtn">Save Entry</button>
+            <div id="syncStatus" class="sync-status hidden"></div>
+          </div>
+
+          <!-- Chart -->
+          <div class="card">
+            <div class="card-header">
+              <h2>Weight Trend</h2>
+              <span class="card-subtitle">Last 3 months</span>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="weightChart"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- BW History -->
+        <div class="card">
+          <div class="card-header"><h2>Recent Entries</h2></div>
+          <div id="bwHistory"></div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /#app -->
+
+  <!-- ── Settings Modal ── -->
+  <div id="settingsModal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button class="icon-btn" id="closeSettingsBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Section 1: Google Auth -->
+        <div class="settings-section">
+          <div class="settings-section-title">Google Account</div>
+          <p class="setup-desc">Sign in with Google to sync your data across all your devices.</p>
+
+          <div class="form-group">
+            <label class="form-label">OAuth Client ID</label>
+            <input type="text" id="clientIdInput" class="form-input" placeholder="1234567890-abc.apps.googleusercontent.com">
+            <p class="field-hint">
+              <a href="https://console.cloud.google.com" target="_blank">Get this from Google Cloud Console</a>
+              → APIs &amp; Services → Credentials → OAuth 2.0 Client ID (Web Application).<br>
+              Add your Netlify URL (or <code>http://localhost:8080</code>) as an Authorized JavaScript Origin.
+            </p>
+          </div>
+
+          <div class="settings-auth-row">
+            <div class="connect-status">
+              <span class="status-dot" id="gStatusDot"></span>
+              <span id="gStatusText">Not connected</span>
+            </div>
+            <button class="btn btn-primary btn-sm" id="connectGoogleBtn">Connect Google</button>
+          </div>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <!-- Section 2: Workout Data Sheet -->
+        <div class="settings-section">
+          <div class="settings-section-title">Workout Data</div>
+          <p class="setup-desc">
+            Your workout templates and sessions are stored in a private Google Sheet that only you control.
+            It is created automatically the first time you connect.
+          </p>
+          <div id="workoutSheetStatus" class="sheet-status">
+            <span class="status-dot" id="wSheetDot"></span>
+            <span id="wSheetText">Not set up — connect Google first</span>
+          </div>
+          <div id="workoutSheetLink" class="hidden" style="margin-top:8px">
+            <a id="workoutSheetAnchor" href="#" target="_blank" class="sheet-link">Open your workout spreadsheet ↗</a>
+          </div>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <!-- Section 3: Body Weight Sheet -->
+        <div class="settings-section">
+          <div class="settings-section-title">Body Weight Data (Trainer's Sheet)</div>
+          <p class="setup-desc">
+            Body weight entries sync to your trainer's spreadsheet automatically when you're connected to Google.
+          </p>
+          <div class="sheet-status">
+            <span class="status-dot connected"></span>
+            <span>Pre-configured — ready to sync</span>
+          </div>
+          <div style="margin-top:8px">
+            <a href="https://docs.google.com/spreadsheets/d/1dkC1t_-CCxLsArDa4K3ZrekTCMwIRomJ66aKxlEq56c" target="_blank" class="sheet-link">Open trainer's spreadsheet ↗</a>
+          </div>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <button class="btn btn-primary" id="saveSettingsBtn">Save Client ID</button>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
