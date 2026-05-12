@@ -254,9 +254,6 @@ async function syncFromSheets() {
     }
     state.workoutData.sessions = Object.values(sessionMap);
 
-    // Always rewrite so any local edits are pushed (not just new sessions)
-    await rewriteSessionsToSheets();
-
     // ── Body weight: union by date ──
     const bwMap = {};
     for (const e of state.bodyweightData.entries) bwMap[e.date] = e;
@@ -276,12 +273,14 @@ async function syncFromSheets() {
     state.bodyweightData.entries = Object.values(bwMap)
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Always rewrite so local edits are pushed (not just new entries)
-    await rewriteBwToUserSheet();
-
+    // Save and mark synced immediately so data is visible even if write-back fails
     saveWorkoutLocal();
     saveBodyweightLocal();
     setSyncStatus('synced');
+
+    // Write-back is fire-and-forget — failures don't affect what the user sees
+    rewriteSessionsToSheets().catch(e => console.warn('Session rewrite:', e));
+    rewriteBwToUserSheet().catch(e => console.warn('BW rewrite:', e));
   } catch (err) {
     console.error('Sync error:', err);
     setSyncStatus('error');
@@ -370,12 +369,9 @@ async function ensureForTrainerTab() {
       body: JSON.stringify({ requests: [{ addSheet: { properties: { title: 'ForTrainer' } } }] }),
     }
   );
-  if (!r.ok) {
-    const body = await r.json().catch(() => ({}));
-    const msg  = body?.error?.message || '';
-    if (!msg.toLowerCase().includes('already exists')) throw new Error(`ensureForTrainerTab: ${r.status} ${msg}`);
-  }
-  await sheetsPut(state.workoutSheetId, 'ForTrainer!A1:F1', [['Date', 'Workout', 'Exercise', 'Sets', 'Weight (kg)', 'Reps']]);
+  // Swallow all errors — tab may already exist or user may lack edit rights
+  if (!r.ok) { await r.body?.cancel?.(); return; }
+  await sheetsPut(state.workoutSheetId, 'ForTrainer!A1:F1', [['Date', 'Workout', 'Exercise', 'Sets', 'Weight (kg)', 'Reps']]).catch(() => {});
 }
 
 async function rewriteTrainerSheet() {
