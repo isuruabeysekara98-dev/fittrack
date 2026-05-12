@@ -181,8 +181,31 @@ function handleTokenExpiry() {
 }
 
 // ── Workout spreadsheet setup ─────────────────────────────────
+
+// Search Drive for an existing FitTrack spreadsheet so we reconnect to it
+// instead of creating a new one when localStorage is empty (e.g. new domain).
+async function findExistingWorkoutSheet() {
+  const q = encodeURIComponent("name='FitTrack — My Workout Data' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
+  const r = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&pageSize=1`,
+    { headers: { Authorization: `Bearer ${state.googleToken}` } }
+  );
+  if (!r.ok) return null;
+  const data = await r.json();
+  return data.files?.[0]?.id || null;
+}
+
 async function ensureWorkoutSpreadsheet() {
   if (state.workoutSheetId) { updateWorkoutSheetStatus(); return; }
+
+  // Before creating a new sheet, check if one already exists in Drive
+  const existingId = await findExistingWorkoutSheet().catch(() => null);
+  if (existingId) {
+    state.workoutSheetId = existingId;
+    localStorage.setItem('ft_workoutSheetId', existingId);
+    updateWorkoutSheetStatus();
+    return;
+  }
 
   const r = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
     method: 'POST',
@@ -421,7 +444,7 @@ function initTokenClient() {
   if (!state.clientId || typeof google === 'undefined' || !google.accounts?.oauth2) return;
   state.tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: state.clientId,
-    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.metadata.readonly',
     callback: async resp => {
       const wasSilent = state.silentAuthInProgress;
       state.silentAuthInProgress = false;
