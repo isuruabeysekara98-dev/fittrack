@@ -1155,21 +1155,34 @@ function setupEvents() {
   getEl('settingsBtn')?.addEventListener('click', () => {
     const ci = getEl('clientIdInput');
     if (ci && state.clientId) ci.value = state.clientId;
+    const si = getEl('sheetIdInput');
+    if (si && state.workoutSheetId) si.value = state.workoutSheetId;
     updateWorkoutSheetStatus();
     showModal('settingsModal');
   });
   getEl('closeSettingsBtn')?.addEventListener('click', () => hideModal('settingsModal'));
   getEl('settingsModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) hideModal('settingsModal'); });
 
-  // Save client ID
+  // Save client ID (and optional spreadsheet ID)
   getEl('saveSettingsBtn')?.addEventListener('click', () => {
     const val = getEl('clientIdInput')?.value.trim();
     if (!val) { alert('Please paste your Google OAuth Client ID.'); return; }
     state.clientId = val;
     localStorage.setItem('ft_clientId', val);
+
+    const sheetVal = getEl('sheetIdInput')?.value.trim();
+    if (sheetVal) {
+      // Accept full URL or bare ID
+      const match = sheetVal.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+      const id = match ? match[1] : sheetVal;
+      state.workoutSheetId = id;
+      localStorage.setItem('ft_workoutSheetId', id);
+      updateWorkoutSheetStatus();
+    }
+
     state.tokenClient = null;
     initTokenClient();
-    alert('Client ID saved. Click "Connect Google" to sign in.');
+    alert('Saved. Click "Connect Google" to sign in.');
   });
 
   // Connect Google (in settings)

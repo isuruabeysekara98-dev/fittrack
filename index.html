@@ -228,6 +228,11 @@
             Your workout templates and sessions are stored in a private Google Sheet that only you control.
             It is created automatically the first time you connect.
           </p>
+          <div class="form-group" style="margin-top:10px">
+            <label class="form-label" for="sheetIdInput">Spreadsheet ID <span style="font-weight:400;color:var(--text-muted)">(paste if reconnecting)</span></label>
+            <input type="text" id="sheetIdInput" class="form-input" placeholder="Paste your existing spreadsheet ID here">
+            <p class="field-hint">Find it in the URL of your Google Sheet: docs.google.com/spreadsheets/d/<strong>ID</strong>/edit</p>
+          </div>
           <div id="workoutSheetStatus" class="sheet-status">
             <span class="status-dot" id="wSheetDot"></span>
             <span id="wSheetText">Not set up — connect Google first</span>
