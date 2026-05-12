@@ -1,5 +1,5 @@
 // FitTrack Service Worker
-const CACHE = 'fittrack-v6';
+const CACHE = 'fittrack-v7';
 const SHELL = [
   '/',
   '/index.html',
@@ -42,7 +42,10 @@ self.addEventListener('fetch', e => {
     e.respondWith(
       fetch(e.request)
         .then(resp => {
-          if (resp.status === 200) caches.open(CACHE).then(c => c.put(e.request, resp.clone()));
+          if (resp.status === 200) {
+            const toCache = resp.clone(); // clone synchronously before resp is consumed
+            caches.open(CACHE).then(c => c.put(e.request, toCache));
+          }
           return resp;
         })
         .catch(() => caches.match(e.request).then(c => c || caches.match('/index.html')))
@@ -55,8 +58,10 @@ self.addEventListener('fetch', e => {
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(resp => {
-        if (e.request.method === 'GET' && resp.status === 200)
-          caches.open(CACHE).then(c => c.put(e.request, resp.clone()));
+        if (e.request.method === 'GET' && resp.status === 200) {
+          const toCache = resp.clone();
+          caches.open(CACHE).then(c => c.put(e.request, toCache));
+        }
         return resp;
       });
     }).catch(() => caches.match('/index.html'))
