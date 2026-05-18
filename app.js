@@ -646,25 +646,16 @@ function buildPerWorkoutPerfRows(workout, sessions) {
     return entry ? avgWt(entry) : null;
   };
 
-  const avgWtOverSessions = (sessArr, ex) => {
-    if (!sessArr.length) return null;
-    const weights = sessArr.map(s => sessionAvgWt(s, ex)).filter(w => w !== null);
-    if (!weights.length) return null;
-    return weights.reduce((sum, w) => sum + w, 0) / weights.length;
-  };
-
   const lastMap = sessionVolMap(latest);
   const rows = Object.entries(lastMap).map(([ex, lastVol]) => {
     const avg7  = avgVol(prev7,  ex);
     const avg30 = avgVol(prev30, ex);
     const lastAvgWt = sessionAvgWt(latest, ex);
-    const avg7Wt    = avgWtOverSessions(prev7, ex);
     return {
       ex, lastVol,
       avg7,  vsAvg7:  avg7  !== null ? (lastVol - avg7)  / avg7  * 100 : null,
       avg30, vsAvg30: avg30 !== null ? (lastVol - avg30) / avg30 * 100 : null,
       lastAvgWt,
-      avg7Wt, vsAvg7Wt: (lastAvgWt !== null && avg7Wt !== null) ? (lastAvgWt - avg7Wt) / avg7Wt * 100 : null,
     };
   });
 
@@ -699,7 +690,6 @@ function renderPerWorkoutAccordion(elId) {
           <th>vs 7-day Avg</th>
           <th>vs 30-day Avg</th>
           <th>Avg Wt (Last)</th>
-          <th>vs 7d Avg Wt</th>
         </tr></thead>
         <tbody>${res.rows.map(r => `
           <tr>
@@ -708,7 +698,6 @@ function renderPerWorkoutAccordion(elId) {
             <td>${fmtChg(r.vsAvg7)}</td>
             <td>${fmtChg(r.vsAvg30)}</td>
             <td class="perf-volume">${fmtWt(r.lastAvgWt)}</td>
-            <td>${fmtChg(r.vsAvg7Wt)}</td>
           </tr>`).join('')}
         </tbody>
       </table>

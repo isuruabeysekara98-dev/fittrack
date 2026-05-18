@@ -799,9 +799,7 @@ select.form-input { cursor: pointer; }
   .container        { padding: 16px; }
   .card             { padding: 18px; }
   .perf-table th:nth-child(4),
-  .perf-table td:nth-child(4),
-  .perf-table th:nth-child(6),
-  .perf-table td:nth-child(6) { display: none; }
+  .perf-table td:nth-child(4) { display: none; }
 
   /* Respect side notches in landscape */
   .header-inner {
