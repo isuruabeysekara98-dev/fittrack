@@ -39,12 +39,16 @@ function loadLocal() {
     const wd  = localStorage.getItem('ft_workoutData');
     if (wd)  state.workoutData    = { exercises: [], workouts: [], sessions: [], ...JSON.parse(wd) };
     const bw  = localStorage.getItem('ft_bodyweightData');
-    if (bw)  state.bodyweightData = JSON.parse(bw);
+    if (bw) {
+      state.bodyweightData = JSON.parse(bw);
+      state.bodyweightData.entries = (state.bodyweightData.entries || []).filter(e => isValidBwYear(e.date));
+    }
     const cid = localStorage.getItem('ft_clientId');
     if (cid) state.clientId       = cid;
     const sid = localStorage.getItem('ft_workoutSheetId');
     if (sid) state.workoutSheetId = sid;
     migrateOldEntries();
+    repairDuplicatedSets();
   } catch (e) { console.error('loadLocal:', e); }
 }
 
@@ -64,6 +68,23 @@ function migrateOldEntries() {
     });
   }
   if (changed) saveWorkoutLocal();
+}
+
+// One-time repair: the sync bug caused sets to be duplicated on every sync.
+// The first 3 sets per exercise are the originals; trim any extras.
+function repairDuplicatedSets() {
+  if (localStorage.getItem('ft_setsRepaired_v1')) return;
+  let changed = false;
+  for (const session of state.workoutData.sessions) {
+    for (const entry of session.entries) {
+      if (Array.isArray(entry.sets) && entry.sets.length > 3) {
+        entry.sets = entry.sets.slice(0, 3);
+        changed = true;
+      }
+    }
+  }
+  if (changed) saveWorkoutLocal();
+  localStorage.setItem('ft_setsRepaired_v1', '1');
 }
 
 function saveWorkoutLocal()    { localStorage.setItem('ft_workoutData',    JSON.stringify(state.workoutData)); }
@@ -102,6 +123,11 @@ function getEl(id)  { return document.getElementById(id); }
 //   1. Already ISO  "2026-01-15"  → passthrough
 //   2. Serial       "46045"       → convert
 //   3. Localised    "1/15/2026"   → reformat
+function isValidBwYear(dateStr) {
+  const y = parseInt(String(dateStr).slice(0, 4), 10);
+  return y >= 2000 && y <= 2100;
+}
+
 function normalizeSheetDate(val) {
   if (!val) return val;
   const s = String(val).trim();
@@ -258,9 +284,13 @@ async function syncFromSheets() {
 
     if (localOnly.length) await saveTemplatesToSheets();
 
-    // ── Sessions: union by session ID ──
+    // ── Sessions: union by session ID (local wins) ──
     const sessionMap = {};
-    for (const s of state.workoutData.sessions) sessionMap[s.id] = s;
+    const localSessionIds = new Set();
+    for (const s of state.workoutData.sessions) {
+      sessionMap[s.id] = s;
+      localSessionIds.add(s.id);
+    }
 
     const remoteSessionIds = new Set();
     for (const row of sessRows) {
@@ -268,6 +298,9 @@ async function syncFromSheets() {
       if (!sid) continue;
       const date = normalizeSheetDate(rawDate);
       remoteSessionIds.add(sid);
+      // Local wins for sessions — only import sessions that don't exist locally.
+      // Merging Sheets rows into existing local sessions would duplicate sets.
+      if (localSessionIds.has(sid)) continue;
       if (!sessionMap[sid]) sessionMap[sid] = { id: sid, date, workoutId: wid, workoutName: wname, entries: [] };
       if (exercise) {
         let entry = sessionMap[sid].entries.find(e => e.exercise === exercise);
@@ -286,6 +319,7 @@ async function syncFromSheets() {
       const [rawDate, weight, waist, notes] = row;
       if (!rawDate || !weight) continue;
       const date = normalizeSheetDate(rawDate);
+      if (!isValidBwYear(date)) continue;
       remoteDates.add(date);
       if (!bwMap[date]) bwMap[date] = {
         date, weight: parseFloat(weight),
@@ -998,6 +1032,7 @@ function openEditSession(sessionId) {
 
 // ── Body weight ───────────────────────────────────────────────
 function addBodyweightEntry(date, weight, waist, notes) {
+  if (!isValidBwYear(date)) { alert('Please enter a valid date.'); return; }
   // Replace any existing entry for the same date
   state.bodyweightData.entries = state.bodyweightData.entries.filter(e => e.date !== date);
   state.bodyweightData.entries.push({
